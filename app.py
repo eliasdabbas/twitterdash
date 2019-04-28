@@ -1,4 +1,5 @@
 import base64
+import logging
 import os
 
 from urllib.parse import quote
@@ -11,6 +12,8 @@ from dash_table import DataTable
 import pandas as pd
 import advertools as adv
 from dash.exceptions import PreventUpdate
+
+logging.basicConfig(level=logging.INFO)
 
 app_key = os.environ['APP_KEY']
 app_secret = os.environ['APP_SECRET']
@@ -55,97 +58,104 @@ app = dash.Dash(__name__)
 server = app.server
 
 app.layout = html.Div([
-
-        dcc.Store(id='twitter_df', storage_type='memory'),
-        html.Br(),
+    dcc.Store(id='twitter_df', storage_type='memory'),
+    html.Br(),
+    html.Div([
         html.Img(src='data:image/png;base64,' + img_base64,
                  width=200, style={'display': 'inline-block'}),
-        html.H1('Twitter Search: Create Your Own Dataset',
-                style={'display': 'inline-block', 'margin-left': '13%'}),
         html.Br(),
-        dcc.Input(id='twitter_search', placeholder='Search Twitter',
-                  style={'height': 30, 'width': 200,
-                         'font-size': 16, 'margin-left': '25%'}),
-        dcc.Input(id='twitter_search_count', placeholder='Number or tweets',
-                  type='number',
-                  style={'height': 30, 'vertical-align': 'top',
-                         'font-size': 16, 'width': 160}),
-        dcc.Dropdown(id='twitter_search_lang', placeholder='Language',
-                     options=lang_options,
-                     style={'width': 250, 'display': 'inline-block',
-                            'vertical-align': 'top'}),
-        html.Button(id='search_button', children='Submit',
-                    style={'width': 75, 'font-size': 16}),
+        html.A(children=['online marketing', html.Br(),
+                         'productivity & analysis'],
+               style={'horizontal-align': 'center'},
+               href='https://github.com/eliasdabbas/advertools'),
+    ], style={'display': 'inline-block', 'text-align': 'center'}),
+    html.H1('Twitter Search: Create Your Own Dataset',
+            style={'display': 'inline-block', 'margin-left': '13%'}),
+    html.Br(),
+    dcc.Input(id='twitter_search', placeholder='Search Twitter',
+              style={'height': 30, 'width': 200,
+                     'font-size': 16, 'margin-left': '25%'}),
+    dcc.Input(id='twitter_search_count', placeholder='Number or tweets',
+              type='number',
+              style={'height': 30, 'vertical-align': 'top',
+                     'font-size': 16, 'width': 160}),
+    dcc.Dropdown(id='twitter_search_lang', placeholder='Language',
+                 options=lang_options,
+                 style={'width': 250, 'display': 'inline-block',
+                        'position': 'relative', 'zIndex': 15,
+                        'vertical-align': 'top'}),
+    html.Button(id='search_button', children='Submit',
+                style={'width': 75, 'font-size': 16}),
 
-        html.Hr(),
-        html.Div([
-            html.Div(id='container_col_select',
-                     children=dcc.Dropdown(id='col_select',
-                                           placeholder='Filter by:'),
-                     style={'display': 'inline-block', 'width': '15%',
-                            'border-width': '0px', 'margin-left': '15%'}),
-            html.Div([
-                html.Div([
-                    html.Div(children=dcc.RangeSlider(id='num_filter',
-                                                      updatemode='drag')),
-                    html.Div(children=html.Div(id='rng_slider_vals'),
-                             style={'text-align': 'center'}),
-                ], id='container_num_filter', style={'display': 'none'}),
-                html.Div(id='container_str_filter',
-                         style={'display': 'none'},
-                         children=dcc.Input(id='str_filter', size='200px',
-                                            style={'height': 28,
-                                                   'vertical-align': 'bottom',
-                                                   'font-size': 16})),
-                html.Div(id='container_bool_filter',
-                         style={'display': 'none'},
-                         children=dcc.Dropdown(id='bool_filter',
-                                               options=[{'label': 'True',
-                                                         'value': 1},
-                                                        {'label': 'False',
-                                                         'value': 0}])),
-                html.Div(id='container_cat_filter',
-                         style={'display': 'none'},
-                         children=dcc.Dropdown(id='cat_filter', multi=True)),
-                html.Div([
-                    dcc.DatePickerRange(id='date_filter',
-                                        style={'vertical-align': 'bottom'}),
-                ], id='container_date_filter', style={'display': 'none'}),
-            ], style={'width': '20%', 'display': 'inline-block'}),
-            html.Div(id='row_summary',
-                     style={'display': 'inline-block', 'width': '20%',
-                            'vertical-align': '10px', 'margin-left': '15%'}),
-            html.A('Download Table', id='download_link',
-                   download="rawdata.csv", href="", target="_blank",
-                   n_clicks=0, style={'display': 'inline-block',
-                                      'vertical-align': '10px'}),
-        ], style={'position': 'relative', 'zIndex': 5}),
-
+    html.Hr(),
+    html.Div([
+        html.Div(id='container_col_select',
+                 children=dcc.Dropdown(id='col_select',
+                                       placeholder='Filter by:'),
+                 style={'display': 'inline-block', 'width': '15%',
+                        'border-width': '0px', 'margin-left': '15%'}),
         html.Div([
             html.Div([
-                html.H3('Add/remove columns:'),
-                dcc.Dropdown(id='output_table_col_select', multi=True,
-                             value=['tweet_created_at', 'user_screen_name',
-                                    'user_followers_count', 'tweet_full_text',
-                                    'tweet_retweet_count']),
-            ], style={'display': 'inline-block', 'width': '15%'}),
+                html.Div(children=dcc.RangeSlider(id='num_filter',
+                                                  updatemode='drag')),
+                html.Div(children=html.Div(id='rng_slider_vals'),
+                         style={'text-align': 'center'}),
+            ], id='container_num_filter', style={'display': 'none'}),
+            html.Div(id='container_str_filter',
+                     style={'display': 'none'},
+                     children=dcc.Input(id='str_filter', size='200px',
+                                        style={'height': 28,
+                                               'vertical-align': 'bottom',
+                                               'font-size': 16})),
+            html.Div(id='container_bool_filter',
+                     style={'display': 'none'},
+                     children=dcc.Dropdown(id='bool_filter',
+                                           options=[{'label': 'True',
+                                                     'value': 1},
+                                                    {'label': 'False',
+                                                     'value': 0}])),
+            html.Div(id='container_cat_filter',
+                     style={'display': 'none'},
+                     children=dcc.Dropdown(id='cat_filter', multi=True)),
             html.Div([
-                DataTable(id='table', sorting=True,
-                          n_fixed_rows=1,
-                          virtualization=True,
-                          style_table={'overflowX': 'scroll', 'maxHeight': 500,
-                                       'border-width': '0px'},
-                          style_as_list_view=True,
-                          style_cell_conditional=[{
-                                    'if': {'row_index': 'odd'},
-                                    'backgroundColor': '#eeeeee'}],
-                          style_cell={'maxWidth': '400px',
-                                      'whiteSpace': 'normal',
-                                      'minWidth': '0px', 'padding': '5px'}),
-            ], style={'display': 'inline-block', 'width': '80%',
-                      'position': 'relative', 'zIndex': 1, 'float': 'right',
-                      'margin-right': '3%'}),
-        ] + [html.Br() for x in range(30)]),
+                dcc.DatePickerRange(id='date_filter',
+                                    style={'vertical-align': 'bottom'}),
+            ], id='container_date_filter', style={'display': 'none'}),
+        ], style={'width': '20%', 'display': 'inline-block'}),
+        html.Div(id='row_summary',
+                 style={'display': 'inline-block', 'width': '20%',
+                        'vertical-align': '10px', 'margin-left': '15%'}),
+        html.A('Download Table', id='download_link',
+               download="rawdata.csv", href="", target="_blank",
+               n_clicks=0, style={'display': 'inline-block',
+                                  'vertical-align': '10px'}),
+    ], style={'position': 'relative', 'zIndex': 5}),
+
+    html.Div([
+        html.Div([
+            html.H3('Add/remove columns:'),
+            dcc.Dropdown(id='output_table_col_select', multi=True,
+                         value=['tweet_created_at', 'user_screen_name',
+                                'user_followers_count', 'tweet_full_text',
+                                'tweet_retweet_count']),
+        ], style={'display': 'inline-block', 'width': '15%'}),
+        html.Div([
+            DataTable(id='table', sorting=True,
+                      n_fixed_rows=1,
+                      virtualization=True,
+                      style_table={'overflowX': 'scroll', 'maxHeight': 500,
+                                   'border-width': '0px'},
+                      style_as_list_view=True,
+                      style_cell_conditional=[{
+                                'if': {'row_index': 'odd'},
+                                'backgroundColor': '#eeeeee'}],
+                      style_cell={'maxWidth': '400px',
+                                  'whiteSpace': 'normal',
+                                  'minWidth': '0px', 'padding': '5px'}),
+        ], style={'display': 'inline-block', 'width': '80%',
+                  'position': 'relative', 'zIndex': 1, 'float': 'right',
+                  'margin-right': '3%'}),
+    ] + [html.Br() for x in range(30)]),
 ], style={'backgroundColor': '#eeeeee', 'font-family': 'Palatino'})
 
 
@@ -294,6 +304,8 @@ def filter_table(df, col, numbers, categories, string,
             df[column] = pd.to_datetime(df[column])
         if ('lang' in column) or ('source' in column):
             df[column] = df[column].astype('category')
+    loggin_dict = {k: v for k, v in locals().items() if k not in ['df', 'column'] and v is not None}
+    logging.info(msg=loggin_dict)
     if numbers and (get_str_dtype(df, col) in ['int', 'float']):
         df = df[df[col].between(numbers[0], numbers[-1])]
         return df.to_dict('rows')
@@ -333,4 +345,4 @@ def download_df(data_df):
 
 
 if __name__ == '__main__':
-    app.run_server()
+    app.run_server(debug=True)
