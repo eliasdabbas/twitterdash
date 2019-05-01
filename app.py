@@ -97,7 +97,7 @@ app.layout = html.Div([
         html.Div([
             html.Div([
                 html.Div(children=dcc.RangeSlider(id='num_filter',
-                                                  updatemode='drag')),
+                                                  updatemode='mouseup')),
                 html.Div(children=html.Div(id='rng_slider_vals'),
                          style={'text-align': 'center'}),
             ], id='container_num_filter', style={'display': 'none'}),
@@ -147,8 +147,8 @@ app.layout = html.Div([
                                    'border-width': '0px'},
                       style_as_list_view=True,
                       style_cell_conditional=[{
-                                'if': {'row_index': 'odd'},
-                                'backgroundColor': '#eeeeee'}],
+                          'if': {'row_index': 'odd'},
+                          'backgroundColor': '#eeeeee'}],
                       style_cell={'maxWidth': '400px',
                                   'whiteSpace': 'normal',
                                   'minWidth': '0px', 'padding': '5px'}),
@@ -157,7 +157,6 @@ app.layout = html.Div([
                   'margin-right': '3%'}),
     ] + [html.Br() for x in range(30)]),
 ], style={'backgroundColor': '#eeeeee', 'font-family': 'Palatino'})
-
 
 @app.callback(Output('twitter_df', 'data'),
               [Input('search_button', 'n_clicks')],
@@ -341,6 +340,8 @@ def download_df(data_df):
     df = pd.DataFrame(data_df)
     csv_string = df.to_csv(index=False, encoding='utf-8')
     csv_string = "data:text/csv;charset=utf-8," + quote(csv_string)
+    log_msg = format(df.memory_usage().sum(), ',') + 'bytes, shape:' + str(df.shape)
+    logging.info(msg=log_msg)
     return csv_string
 
 
