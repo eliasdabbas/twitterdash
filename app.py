@@ -7,6 +7,7 @@ from urllib.parse import quote
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
+import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
 from dash_table import DataTable
 import pandas as pd
@@ -41,7 +42,8 @@ lang_options = [{'label': loc_name, 'value': code}
                     twtr_lang_df['code'])]
 
 exclude_columns = ['tweet_entities', 'tweet_geo', 'user_entities',
-                   'tweet_coordinates', 'tweet_metadata']
+                   'tweet_coordinates', 'tweet_metadata',
+                   'tweet_extended_entities']
 
 
 def get_str_dtype(df, col):
@@ -53,110 +55,114 @@ def get_str_dtype(df, col):
             return d
 
 
-app = dash.Dash(__name__)
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.COSMO])
 
 server = app.server
 
 app.layout = html.Div([
     dcc.Store(id='twitter_df', storage_type='memory'),
     html.Br(),
-    html.Div([
-        html.Img(src='data:image/png;base64,' + img_base64,
-                 width=200, style={'display': 'inline-block'}),
-        html.Br(),
-        html.A(children=['online marketing', html.Br(),
-                         'productivity & analysis'],
-               style={'horizontal-align': 'center'},
-               href='https://github.com/eliasdabbas/advertools'),
-    ], style={'display': 'inline-block', 'text-align': 'center'}),
-    html.H1('Twitter Search: Create Your Own Dataset',
-            style={'display': 'inline-block', 'margin-left': '13%'}),
-    html.Br(),
-    dcc.Input(id='twitter_search', placeholder='Search Twitter',
-              style={'height': 30, 'width': 200,
-                     'font-size': 16, 'margin-left': '25%'}),
-    dcc.Input(id='twitter_search_count', placeholder='Number or tweets',
-              type='number',
-              style={'height': 30, 'vertical-align': 'top',
-                     'font-size': 16, 'width': 160}),
-    dcc.Dropdown(id='twitter_search_lang', placeholder='Language',
-                 options=lang_options,
-                 style={'width': 250, 'display': 'inline-block',
-                        'position': 'relative', 'zIndex': 15,
-                        'vertical-align': 'top'}),
-    html.Button(id='search_button', children='Submit',
-                style={'width': 75, 'font-size': 16}),
-
+    dbc.Row([
+        dbc.Col([
+            html.Img(src='data:image/png;base64,' + img_base64,
+                     width=200, style={'display': 'inline-block'}),
+            html.Br(),
+            html.A(children=['online marketing', html.Br(),
+                             'productivity & analysis'],
+                   style={'horizontal-align': 'center'},
+                   href='https://github.com/eliasdabbas/advertools'),
+        ], lg=2, xs=11, style={'textAlign': 'center'}),
+        dbc.Col([
+            html.H1('Twitter Search: Create Your Own Dataset',
+                    style={'textAlign': 'center'})
+        ], lg=9, xs=11),
+    ], style={'margin-left': '1%'}),
+    dbc.Row([
+        dbc.Col(lg=3, xs=10),
+        dbc.Col([
+            dbc.Input(id='twitter_search',
+                      placeholder='Search Twitter'),
+        ], lg=2, xs=10),
+        dbc.Col([
+            dbc.Input(id='twitter_search_count',
+                      placeholder='Number or tweets', type='number'),
+        ], lg=2, xs=10),
+        dbc.Col([
+            dcc.Dropdown(id='twitter_search_lang', placeholder='Language',
+                         options=lang_options,
+                         style={'position': 'relative', 'zIndex': 15}
+                         ),
+        ], lg=2, xs=10),
+        dbc.Col([
+            html.Button(id='search_button', children='Submit'),
+        ], lg=2, xs=10),
+    ]),
     html.Hr(),
-    html.Div([
-        html.Div(id='container_col_select',
-                 children=dcc.Dropdown(id='col_select',
-                                       placeholder='Filter by:'),
-                 style={'display': 'inline-block', 'width': '15%',
-                        'border-width': '0px', 'margin-left': '15%'}),
-        html.Div([
-            html.Div([
-                html.Div(children=dcc.RangeSlider(id='num_filter',
-                                                  updatemode='mouseup')),
-                html.Div(children=html.Div(id='rng_slider_vals'),
+    dbc.Row([
+        dbc.Col(lg=3, xs=11),
+        dbc.Col(id='container_col_select',
+                children=dcc.Dropdown(id='col_select',
+                                      placeholder='Filter by:'),
+                lg=2, xs=11),
+        dbc.Col([
+            dbc.Col([
+                dbc.Container(children=dcc.RangeSlider(id='num_filter',
+                                                       updatemode='mouseup')),
+                dbc.Container(children=html.Div(id='rng_slider_vals'),
                          style={'text-align': 'center'}),
-            ], id='container_num_filter', style={'display': 'none'}),
-            html.Div(id='container_str_filter',
-                     style={'display': 'none'},
-                     children=dcc.Input(id='str_filter', size='200px',
-                                        style={'height': 28,
-                                               'vertical-align': 'bottom',
-                                               'font-size': 16})),
-            html.Div(id='container_bool_filter',
-                     style={'display': 'none'},
-                     children=dcc.Dropdown(id='bool_filter',
-                                           options=[{'label': 'True',
-                                                     'value': 1},
-                                                    {'label': 'False',
-                                                     'value': 0}])),
-            html.Div(id='container_cat_filter',
-                     style={'display': 'none'},
-                     children=dcc.Dropdown(id='cat_filter', multi=True)),
-            html.Div([
-                dcc.DatePickerRange(id='date_filter',
-                                    style={'vertical-align': 'bottom'}),
-            ], id='container_date_filter', style={'display': 'none'}),
+            ], lg=0, xs=0, id='container_num_filter',
+                style={'display': 'none'}),
+            dbc.Col(id='container_str_filter',
+                    style={'display': 'none'},
+                    children=dcc.Input(id='str_filter'), lg=0, xs=0),
+            dbc.Col(id='container_bool_filter',
+                    style={'display': 'none'},
+                    children=dcc.Dropdown(id='bool_filter',
+                                          options=[{'label': 'True',
+                                                    'value': 1},
+                                                   {'label': 'False',
+                                                    'value': 0}]),
+                    lg=0, xs=0,),
+            dbc.Col(id='container_cat_filter',
+                    style={'display': 'none'},
+                    children=dcc.Dropdown(id='cat_filter', multi=True),
+                    lg=0, xs=0),
+            dbc.Col([
+                dcc.DatePickerRange(id='date_filter'),
+            ], id='container_date_filter', style={'display': 'none'},
+                lg=0, xs=0),
         ], style={'width': '20%', 'display': 'inline-block'}),
-        html.Div(id='row_summary',
-                 style={'display': 'inline-block', 'width': '20%',
-                        'vertical-align': '10px', 'margin-left': '15%'}),
-        html.A('Download Table', id='download_link',
-               download="rawdata.csv", href="", target="_blank",
-               n_clicks=0, style={'display': 'inline-block',
-                                  'vertical-align': '10px'}),
+        dbc.Col(id='row_summary', lg=2, xs=11),
+        dbc.Col(html.A('Download Table', id='download_link',
+                       download="rawdata.csv", href="", target="_blank",
+                       n_clicks=0), lg=2, xs=11),
     ], style={'position': 'relative', 'zIndex': 5}),
-
-    html.Div([
-        html.Div([
-            html.H3('Add/remove columns:'),
+    dbc.Row([
+        dbc.Col([
+            dbc.Container(html.Label('Add/remove columns:')),
             dcc.Dropdown(id='output_table_col_select', multi=True,
                          value=['tweet_created_at', 'user_screen_name',
                                 'user_followers_count', 'tweet_full_text',
                                 'tweet_retweet_count']),
-        ], style={'display': 'inline-block', 'width': '15%'}),
-        html.Div([
+        ], lg=2, xs=11, style={'margin-left': '1%'}),
+        dbc.Col([
+            html.Br(),
             DataTable(id='table', sorting=True,
                       n_fixed_rows=1,
-                      virtualization=True,
-                      style_table={'overflowX': 'scroll', 'maxHeight': 500,
-                                   'border-width': '0px'},
-                      style_as_list_view=True,
+                      virtualization=False,
+                      style_table={'overflowX': 'scroll', 'maxHeight': 500},
+                      style_as_list_view=False,
                       style_cell_conditional=[{
                           'if': {'row_index': 'odd'},
                           'backgroundColor': '#eeeeee'}],
                       style_cell={'maxWidth': '400px',
                                   'whiteSpace': 'normal',
-                                  'minWidth': '0px', 'padding': '5px'}),
-        ], style={'display': 'inline-block', 'width': '80%',
-                  'position': 'relative', 'zIndex': 1, 'float': 'right',
-                  'margin-right': '3%'}),
+                                  'minWidth': '5px'}),
+        ], lg=9, xs=11, style={'position': 'relative', 'zIndex': 1,
+                               'margin-left': '1%'}),
     ] + [html.Br() for x in range(30)]),
-], style={'backgroundColor': '#eeeeee', 'font-family': 'Palatino'})
+], style={'backgroundColor': '#eeeeee'})
+
 
 @app.callback(Output('twitter_df', 'data'),
               [Input('search_button', 'n_clicks')],
@@ -186,10 +192,13 @@ def set_columns_to_select(df):
     return columns, columns
 
 
+containers = ['container_num_filter', 'container_str_filter',
+              'container_bool_filter', 'container_cat_filter',
+              'container_date_filter']
+
+
 @app.callback([Output(x, 'style')
-               for x in ['container_num_filter', 'container_str_filter',
-                         'container_bool_filter', 'container_cat_filter',
-                         'container_date_filter']],
+               for x in containers],
               [Input('twitter_df', 'data'),
                Input('col_select', 'value')])
 def dispaly_relevant_filter_container(df, col):
@@ -205,9 +214,7 @@ def dispaly_relevant_filter_container(df, col):
     dtypes = [['int', 'float'], ['object'], ['bool'],
               ['category'], ['datetime']]
     result = [{'display': 'none'} if get_str_dtype(df, col) not in d
-              else {'display': 'inline-block',
-                    'margin-left': '5%',
-                    'width': '400px'} for d in dtypes]
+              else {'display': 'inline-block'} for d in dtypes]
     return result
 
 
@@ -303,7 +310,8 @@ def filter_table(df, col, numbers, categories, string,
             df[column] = pd.to_datetime(df[column])
         if ('lang' in column) or ('source' in column):
             df[column] = df[column].astype('category')
-    loggin_dict = {k: v for k, v in locals().items() if k not in ['df', 'column'] and v is not None}
+    loggin_dict = {k: v for k, v in locals().items()
+                   if k not in ['df', 'column'] and v is not None}
     logging.info(msg=loggin_dict)
     if numbers and (get_str_dtype(df, col) in ['int', 'float']):
         df = df[df[col].between(numbers[0], numbers[-1])]
@@ -340,7 +348,8 @@ def download_df(data_df):
     df = pd.DataFrame(data_df)
     csv_string = df.to_csv(index=False, encoding='utf-8')
     csv_string = "data:text/csv;charset=utf-8," + quote(csv_string)
-    log_msg = format(df.memory_usage().sum(), ',') + 'bytes, shape:' + str(df.shape)
+    log_msg = (format(df.memory_usage().sum(), ',') +
+               'bytes, shape:' + str(df.shape))
     logging.info(msg=log_msg)
     return csv_string
 
