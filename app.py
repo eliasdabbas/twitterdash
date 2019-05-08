@@ -60,7 +60,7 @@ app = dash.Dash(__name__, external_stylesheets=[dbc.themes.COSMO])
 server = app.server
 
 app.layout = html.Div([
-    dcc.Store(id='twitter_df', storage_type='memory'),
+    dcc.Loading(dcc.Store(id='twitter_df', storage_type='memory')),
     html.Br(),
     dbc.Row([
         dbc.Col([
