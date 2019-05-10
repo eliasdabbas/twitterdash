@@ -43,7 +43,8 @@ lang_options = [{'label': loc_name, 'value': code}
 
 exclude_columns = ['tweet_entities', 'tweet_geo', 'user_entities',
                    'tweet_coordinates', 'tweet_metadata',
-                   'tweet_extended_entities']
+                   'tweet_extended_entities', 'tweet_contributors',
+                   'tweet_display_text_range']
 
 
 def get_str_dtype(df, col):
@@ -109,7 +110,7 @@ app.layout = html.Div([
                 dbc.Container(children=dcc.RangeSlider(id='num_filter',
                                                        updatemode='mouseup')),
                 dbc.Container(children=html.Div(id='rng_slider_vals'),
-                         style={'text-align': 'center'}),
+                              style={'text-align': 'center'}),
             ], lg=0, xs=0, id='container_num_filter',
                 style={'display': 'none'}),
             dbc.Col(id='container_str_filter',
@@ -147,17 +148,15 @@ app.layout = html.Div([
         ], lg=2, xs=11, style={'margin-left': '1%'}),
         dbc.Col([
             html.Br(),
-            DataTable(id='table', sorting=True,
-                      n_fixed_rows=1,
-                      virtualization=False,
-                      style_table={'overflowX': 'scroll', 'maxHeight': 500},
-                      style_as_list_view=False,
-                      style_cell_conditional=[{
-                          'if': {'row_index': 'odd'},
-                          'backgroundColor': '#eeeeee'}],
-                      style_cell={'maxWidth': '400px',
-                                  'whiteSpace': 'normal',
-                                  'minWidth': '5px'}),
+            dcc.Loading(
+                DataTable(id='table', sorting=True,
+                          n_fixed_rows=1,
+                          virtualization=True,
+                          style_cell_conditional=[{
+                              'if': {'row_index': 'odd'},
+                              'backgroundColor': '#eeeeee'}],
+                          style_cell={'width': '200px'}),
+            ),
         ], lg=9, xs=11, style={'position': 'relative', 'zIndex': 1,
                                'margin-left': '1%'}),
     ] + [html.Br() for x in range(30)]),
