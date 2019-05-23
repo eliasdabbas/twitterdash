@@ -321,6 +321,7 @@ def plot_user_analysis_chart(df):
     fig['layout'].update(height=600,
                          yaxis={'title': 'Number of Users' + (' ' * 50) + ' .'
                                 },
+                         width=1200,
                          plot_bgcolor='#eeeeee',
                          paper_bgcolor='#eeeeee',
                          showlegend=False)
