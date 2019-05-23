@@ -159,7 +159,7 @@ app.layout = html.Div([
                           figure={'layout': go.Layout(plot_bgcolor='#eeeeee',
                                                       paper_bgcolor='#eeeeee')
                                   })
-            ], style={'width': '100%'}, label='User Analysis')
+            ], label='User Analysis')
         ]),
     ]),
     html.Hr(), html.Br(),
@@ -321,11 +321,9 @@ def plot_user_analysis_chart(df):
     fig['layout'].update(height=600,
                          yaxis={'title': 'Number of Users' + (' ' * 50) + ' .'
                                 },
-                         autosize=True,
                          plot_bgcolor='#eeeeee',
                          paper_bgcolor='#eeeeee',
                          showlegend=False)
-    print(fig['relayout'])
     return fig
 
 
