@@ -10,9 +10,11 @@ import dash_html_components as html
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
 from dash_table import DataTable
+from plotly import tools
 import pandas as pd
 import advertools as adv
 from dash.exceptions import PreventUpdate
+import plotly.graph_objs as go
 
 logging.basicConfig(level=logging.INFO)
 
@@ -44,8 +46,17 @@ lang_options = [{'label': loc_name, 'value': code}
 exclude_columns = ['tweet_entities', 'tweet_geo', 'user_entities',
                    'tweet_coordinates', 'tweet_metadata',
                    'tweet_extended_entities', 'tweet_contributors',
-                   'tweet_display_text_range']
+                   'tweet_display_text_range', 'tweet_user', 'tweet_place',
+                   'tweet_truncated']
 
+
+regex_dict = {'Emoji': adv.emoji.EMOJI_RAW,
+              'Mentions': adv.regex.MENTION_RAW,
+              'Hashtags': adv.regex.HASHTAG_RAW,}
+
+phrase_len_dict = {'Words': 1,
+                   '2-word Phrases': 2,
+                   '3-word Phrases': 3}
 
 def get_str_dtype(df, col):
     """Return dtype of col in df"""
@@ -74,7 +85,7 @@ app.layout = html.Div([
                    href='https://github.com/eliasdabbas/advertools'),
         ], lg=2, xs=11, style={'textAlign': 'center'}),
         dbc.Col([
-            html.H1('Twitter Search: Create Your Own Dataset',
+            html.H1('Twitter Search: Create & Analyze Your Own Dataset',
                     style={'textAlign': 'center'})
         ], lg=9, xs=11),
     ], style={'margin-left': '1%'}),
@@ -99,6 +110,59 @@ app.layout = html.Div([
         ], lg=2, xs=10),
     ]),
     html.Hr(),
+    dbc.Container([
+        dbc.Col(lg=2, xs=10),
+        dbc.Tabs([
+            dbc.Tab([
+                html.Br(),
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Label('Text field:'),
+                        dcc.Dropdown(id='text_columns',
+                                     options=[{'label': 'Tweet Full Text',
+                                               'value': 'tweet_full_text'},
+                                              {'label': 'User Description',
+                                               'value': 'user_description'}],
+                                     placeholder='Text Column',
+                                     value='tweet_full_text'),
+                    ], lg=3, xs=9),
+                    dbc.Col([
+                        dbc.Label('Weighted by:'),
+                        dcc.Dropdown(id='numeric_columns',
+                                     placeholder='Numeric Column',
+                                     value='user_followers_count'),
+                    ], lg=3, xs=9),
+                    dbc.Col([
+                        dbc.Label('Elements to count:'),
+                        dcc.Dropdown(id='regex_options',
+                                     options=[{'label': x, 'value': x}
+                                              for x in ['Words', 'Emoji',
+                                                        'Mentions', 'Hashtags',
+                                                        '2-word Phrases',
+                                                        '3-word Phrases']],
+                                     value='Words'),
+                    ], lg=3, xs=9),
+                ]),
+                html.Br(),
+                html.H2(id='wtd_freq_chart_title',
+                        style={'textAlign': 'center'}),
+                dcc.Graph(id='wtd_freq_chart',
+                          config={'displayModeBar': False},
+                          figure={'layout': go.Layout(plot_bgcolor='#eeeeee',
+                                                      paper_bgcolor='#eeeeee')
+                                  }),
+            ], label='Text Analysis'),
+            dbc.Tab([
+                html.H3(id='user_overview', style={'textAlign': 'center'}),
+                dcc.Graph(id='user_analysis_chart',
+                          config={'displayModeBar': False},
+                          figure={'layout': go.Layout(plot_bgcolor='#eeeeee',
+                                                      paper_bgcolor='#eeeeee')
+                                  })
+            ], style={'width': '100%'}, label='User Analysis')
+        ]),
+    ]),
+    html.Hr(), html.Br(),
     dbc.Row([
         dbc.Col(lg=3, xs=11),
         dbc.Col(id='container_col_select',
@@ -161,6 +225,120 @@ app.layout = html.Div([
                                'margin-left': '1%'}),
     ] + [html.Br() for x in range(30)]),
 ], style={'backgroundColor': '#eeeeee'})
+
+
+@app.callback(Output('wtd_freq_chart_title', 'children'),
+              [Input('regex_options', 'value'),
+               Input('twitter_df', 'data')])
+def display_wtd_freq_chart_title(regex, df):
+    if regex is None:
+        raise PreventUpdate
+    return 'Most Frequently Used ' + regex + ' (' + str(len(df)) + ' Tweets)'
+
+@app.callback(Output('user_overview', 'children'),
+              [Input('twitter_df', 'data')])
+def display_user_overview(df):
+    if df is None:
+        raise PreventUpdate
+    df = pd.DataFrame(df)
+    n_tweets = len(df)
+    n_users = df['user_screen_name'].nunique()
+    return 'Number of tweets: ' + str(n_tweets) + \
+           ' | Number of Users: ' + str(n_users)
+
+
+@app.callback(Output('wtd_freq_chart', 'figure'),
+              [Input('twitter_df', 'data'),
+               Input('text_columns', 'value'),
+               Input('numeric_columns', 'value'),
+               Input('regex_options', 'value')])
+def plot_wtd_frequency(df, text_col, num_col, regex):
+    if (df is None) or (text_col is None) or (num_col is None):
+        raise PreventUpdate
+    df = pd.DataFrame(df)
+    wtd_freq_df = adv.word_frequency(df[text_col], df[num_col],
+                                     regex=regex_dict.get(regex),
+                                     phrase_len=phrase_len_dict.get(regex)
+                                     or 1)[:20]
+    fig = tools.make_subplots(rows=1, cols=2,
+                              subplot_titles=['Weighted Frequency',
+                                              'Absolute Frequency'])
+    fig.append_trace(go.Bar(x=wtd_freq_df['wtd_freq'][::-1],
+                            y=wtd_freq_df['word'][::-1],
+                            name='Weighted Freq.',
+                            orientation='h'), 1, 1)
+    wtd_freq_df = wtd_freq_df.sort_values('abs_freq', ascending=False)
+    fig.append_trace(go.Bar(x=wtd_freq_df ['abs_freq'][::-1],
+                            y=wtd_freq_df['word'][::-1],
+                            name='Abs. Freq.',
+                            orientation='h'), 1, 2)
+
+    fig['layout'].update(height=600,
+                         plot_bgcolor='#eeeeee',
+                         paper_bgcolor='#eeeeee',
+                         showlegend=False,
+                         yaxis={'title': 'Top Words: ' +
+                                text_col.replace('_', ' ').title()})
+    fig['layout']['annotations'] += ({'x': 0.5, 'y': -0.16, 'xref': 'paper',
+                                      'showarrow': False, 'font': {'size': 16},
+                                      'yref': 'paper',
+                                      'text': num_col.replace('_', ' ').title()
+                                      },)
+    fig['layout']['xaxis']['domain'] = [0.1, 0.45]
+    fig['layout']['xaxis2']['domain'] = [0.65, 1.0]
+    return fig
+
+
+subplot_titles = ['Followers Count', 'Statuses Count',
+                  'Friends Count','Favourites Count',
+                  'Verified','Tweet Source',
+                  'Lang', 'User Created At']
+
+
+@app.callback(Output('user_analysis_chart', 'figure'),
+              [Input('twitter_df', 'data')])
+def plot_user_analysis_chart(df):
+    if df is None:
+        raise PreventUpdate
+    df = pd.DataFrame(df).drop_duplicates('user_screen_name')
+    fig = tools.make_subplots(rows=2, cols=4,
+                              subplot_titles=subplot_titles)
+    for i, col in enumerate(subplot_titles[:4], start=1):
+        col = ('user_' + col).replace(' ', '_').lower()
+        fig.append_trace(go.Histogram(x=df[col], nbinsx=30,name='Users'),
+                         1, i)
+    for i, col in enumerate(subplot_titles[4:7], start=5):
+        if col == 'Tweet Source':
+            col = 'tweet_source'
+        else:
+            col = ('user_' + col).replace(' ', '_').lower()
+        fig.append_trace(go.Bar(x=df[col].value_counts().index[:14], width=0.9,
+                                y=df[col].value_counts().values[:14],
+                                name='Users'), 2, i-4)
+    fig.append_trace(go.Histogram(x=df['user_created_at'],name='Users',
+                                  nbinsx=30, ), 2, 4)
+
+    fig['layout'].update(height=600,
+                         yaxis={'title': 'Number of Users' + (' ' * 50) + ' .'
+                                },
+                         autosize=True,
+                         plot_bgcolor='#eeeeee',
+                         paper_bgcolor='#eeeeee',
+                         showlegend=False)
+    print(fig['relayout'])
+    return fig
+
+
+@app.callback(Output('numeric_columns', 'options'),
+              [Input('twitter_df', 'data')])
+def set_text_columns_ddown_options(df):
+    if df is None:
+        raise PreventUpdate
+    df = pd.DataFrame(df)
+    num_cols = [c for c in df.columns if 'count' in c]
+    num_options = [{'label': c.replace('_', ' ').title(), 'value': c}
+                   for c in num_cols]
+    return num_options
 
 
 @app.callback(Output('twitter_df', 'data'),
@@ -250,7 +428,6 @@ def set_categorical_filter_options(df, column):
         raise PreventUpdate
     df = pd.DataFrame(df)
     if any([x in column for x in ['lang', 'source']]):
-        print(list(df[column].unique()))
         return [{'label': x, 'value': x} for x in list(df[column].unique())]
     return []
 
@@ -309,9 +486,9 @@ def filter_table(df, col, numbers, categories, string,
             df[column] = pd.to_datetime(df[column])
         if ('lang' in column) or ('source' in column):
             df[column] = df[column].astype('category')
-    loggin_dict = {k: v for k, v in locals().items()
+    logging_dict = {k: v for k, v in locals().items()
                    if k not in ['df', 'column'] and v is not None}
-    logging.info(msg=loggin_dict)
+    logging.info(msg=logging_dict)
     if numbers and (get_str_dtype(df, col) in ['int', 'float']):
         df = df[df[col].between(numbers[0], numbers[-1])]
         return df.to_dict('rows')
