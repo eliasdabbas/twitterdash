@@ -159,7 +159,14 @@ app.layout = html.Div([
                           figure={'layout': go.Layout(plot_bgcolor='#eeeeee',
                                                       paper_bgcolor='#eeeeee')
                                   })
-            ], label='User Analysis')
+            ], label='User Analysis'),
+            dbc.Tab([
+                html.Br(),
+                html.Iframe(src="//www.slideshare.net/slideshow/embed_code/key/mgjFlVE6XvyXi4",
+                            width=595, height=485,
+                            style={'margin-left': '30%'})
+
+            ], label='How to Use', tab_style={'fontWeight': 'bold'})
         ]),
     ]),
     html.Hr(), html.Br(),
