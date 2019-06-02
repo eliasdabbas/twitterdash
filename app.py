@@ -97,7 +97,7 @@ app.layout = html.Div([
         ], lg=2, xs=10),
         dbc.Col([
             dbc.Input(id='twitter_search_count',
-                      placeholder='Number or tweets', type='number'),
+                      placeholder='Number of tweets', type='number'),
         ], lg=2, xs=10),
         dbc.Col([
             dcc.Dropdown(id='twitter_search_lang', placeholder='Language',
