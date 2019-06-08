@@ -90,14 +90,23 @@ app.layout = html.Div([
         ], lg=9, xs=11),
     ], style={'margin-left': '1%'}),
     dbc.Row([
-        dbc.Col(lg=3, xs=10),
+        dbc.Col(lg=2, xs=10),
+        dbc.Col([
+           dcc.Dropdown(id='search_type',
+                        placeholder='Search Type',
+                        options=[{'label': c, 'value': c}
+                                 for c in ['Search Tweets',
+                                           'Search Users',
+                                           'Get User Timeline']])
+        ], lg=2, xs=10),
         dbc.Col([
             dbc.Input(id='twitter_search',
-                      placeholder='Search Twitter'),
+                      placeholder='Search query'),
         ], lg=2, xs=10),
         dbc.Col([
             dbc.Input(id='twitter_search_count',
-                      placeholder='Number of tweets', type='number'),
+                      placeholder='Number of results', type='number'),
+
         ], lg=2, xs=10),
         dbc.Col([
             dcc.Dropdown(id='twitter_search_lang', placeholder='Language',
@@ -119,7 +128,7 @@ app.layout = html.Div([
                     dbc.Col([
                         dbc.Label('Text field:'),
                         dcc.Dropdown(id='text_columns',
-                                     options=[{'label': 'Tweet Full Text',
+                                     options=[{'label': 'Tweet Text',
                                                'value': 'tweet_full_text'},
                                               {'label': 'User Description',
                                                'value': 'user_description'}],
@@ -151,7 +160,7 @@ app.layout = html.Div([
                           figure={'layout': go.Layout(plot_bgcolor='#eeeeee',
                                                       paper_bgcolor='#eeeeee')
                                   }),
-            ], label='Text Analysis'),
+            ], label='Text Analysis', id='text_analysis_tab'),
             dbc.Tab([
                 html.H3(id='user_overview', style={'textAlign': 'center'}),
                 dcc.Graph(id='user_analysis_chart',
@@ -159,7 +168,7 @@ app.layout = html.Div([
                           figure={'layout': go.Layout(plot_bgcolor='#eeeeee',
                                                       paper_bgcolor='#eeeeee')
                                   })
-            ], label='User Analysis'),
+            ], tab_id='user_analysis_tab', label='User Analysis'),
             dbc.Tab([
                 html.Br(),
                 html.Iframe(src="//www.slideshare.net/slideshow/embed_code/key/mgjFlVE6XvyXi4",
@@ -167,7 +176,7 @@ app.layout = html.Div([
                             style={'margin-left': '30%'})
 
             ], label='How to Use', tab_style={'fontWeight': 'bold'})
-        ]),
+        ], id='tabs'),
     ]),
     html.Hr(), html.Br(),
     dbc.Row([
@@ -238,75 +247,84 @@ app.layout = html.Div([
               [Input('regex_options', 'value'),
                Input('twitter_df', 'data')])
 def display_wtd_freq_chart_title(regex, df):
-    if regex is None:
+    if regex is None or df is None:
         raise PreventUpdate
-    return 'Most Frequently Used ' + regex + ' (' + str(len(df)) + ' Tweets)'
+    return 'Most Frequently Used ' + regex + ' (' + str(len(df)) +  ' Results)'
+
 
 @app.callback(Output('user_overview', 'children'),
-              [Input('twitter_df', 'data')])
-def display_user_overview(df):
+              [Input('twitter_df', 'data'),
+               Input('search_type', 'value')])
+def display_user_overview(df, search_type):
     if df is None:
         raise PreventUpdate
     df = pd.DataFrame(df)
     n_tweets = len(df)
     n_users = df['user_screen_name'].nunique()
-    return 'Number of tweets: ' + str(n_tweets) + \
-           ' | Number of Users: ' + str(n_users)
+    num_tweets = '' if search_type == 'Search Users' else \
+        'Number of tweets: ' + str(n_tweets) + ' | '
+    return num_tweets + 'Number of Users: ' + str(n_users)
 
 
 @app.callback(Output('wtd_freq_chart', 'figure'),
               [Input('twitter_df', 'data'),
                Input('text_columns', 'value'),
                Input('numeric_columns', 'value'),
-               Input('regex_options', 'value')])
-def plot_wtd_frequency(df, text_col, num_col, regex):
-    if (df is None) or (text_col is None) or (num_col is None):
+               Input('regex_options', 'value'),
+               Input('search_type', 'value')])
+def plot_wtd_frequency(df, text_col, num_col, regex, search_type):
+    if (df is None) or (text_col is None) or (num_col is None) or \
+            (search_type is None):
         raise PreventUpdate
-    df = pd.DataFrame(df)
-    wtd_freq_df = adv.word_frequency(df[text_col], df[num_col],
-                                     regex=regex_dict.get(regex),
-                                     phrase_len=phrase_len_dict.get(regex)
-                                     or 1)[:20]
-    fig = tools.make_subplots(rows=1, cols=2,
-                              subplot_titles=['Weighted Frequency',
-                                              'Absolute Frequency'])
-    fig.append_trace(go.Bar(x=wtd_freq_df['wtd_freq'][::-1],
-                            y=wtd_freq_df['word'][::-1],
-                            name='Weighted Freq.',
-                            orientation='h'), 1, 1)
-    wtd_freq_df = wtd_freq_df.sort_values('abs_freq', ascending=False)
-    fig.append_trace(go.Bar(x=wtd_freq_df ['abs_freq'][::-1],
-                            y=wtd_freq_df['word'][::-1],
-                            name='Abs. Freq.',
-                            orientation='h'), 1, 2)
+    if search_type != 'Search Users':
+        df = pd.DataFrame(df)
+        wtd_freq_df = adv.word_frequency(df[text_col], df[num_col],
+                                         regex=regex_dict.get(regex),
+                                         phrase_len=phrase_len_dict.get(regex)
+                                         or 1)[:20]
+        fig = tools.make_subplots(rows=1, cols=2,
+                                  subplot_titles=['Weighted Frequency',
+                                                  'Absolute Frequency'])
+        fig.append_trace(go.Bar(x=wtd_freq_df['wtd_freq'][::-1],
+                                y=wtd_freq_df['word'][::-1],
+                                name='Weighted Freq.',
+                                orientation='h'), 1, 1)
+        wtd_freq_df = wtd_freq_df.sort_values('abs_freq', ascending=False)
+        fig.append_trace(go.Bar(x=wtd_freq_df ['abs_freq'][::-1],
+                                y=wtd_freq_df['word'][::-1],
+                                name='Abs. Freq.',
+                                orientation='h'), 1, 2)
 
-    fig['layout'].update(height=600,
-                         plot_bgcolor='#eeeeee',
-                         paper_bgcolor='#eeeeee',
-                         showlegend=False,
-                         yaxis={'title': 'Top Words: ' +
-                                text_col.replace('_', ' ').title()})
-    fig['layout']['annotations'] += ({'x': 0.5, 'y': -0.16, 'xref': 'paper',
-                                      'showarrow': False, 'font': {'size': 16},
-                                      'yref': 'paper',
-                                      'text': num_col.replace('_', ' ').title()
-                                      },)
-    fig['layout']['xaxis']['domain'] = [0.1, 0.45]
-    fig['layout']['xaxis2']['domain'] = [0.65, 1.0]
+        fig['layout'].update(height=600,
+                             plot_bgcolor='#eeeeee',
+                             paper_bgcolor='#eeeeee',
+                             showlegend=False,
+                             yaxis={'title': 'Top Words: ' +
+                                    text_col.replace('_', ' ').title()})
+        fig['layout']['annotations'] += ({'x': 0.5, 'y': -0.16,
+                                          'xref': 'paper', 'showarrow': False,
+                                          'font': {'size': 16},
+                                          'yref': 'paper',
+                                          'text': num_col.replace('_', ' ').title()
+                                          },)
+        fig['layout']['xaxis']['domain'] = [0.1, 0.45]
+        fig['layout']['xaxis2']['domain'] = [0.65, 1.0]
+        return fig
+    fig = go.Figure()
+    fig['layout'].update(plot_bgcolor='#eeeeee', paper_bgcolor='#eeeeee')
     return fig
 
 
-subplot_titles = ['Followers Count', 'Statuses Count',
-                  'Friends Count','Favourites Count',
-                  'Verified','Tweet Source',
-                  'Lang', 'User Created At']
-
-
 @app.callback(Output('user_analysis_chart', 'figure'),
-              [Input('twitter_df', 'data')])
-def plot_user_analysis_chart(df):
-    if df is None:
+              [Input('twitter_df', 'data'),
+               Input('search_type', 'value')])
+def plot_user_analysis_chart(df, search_type):
+    if (df is None) or (search_type is None):
         raise PreventUpdate
+    subplot_titles = ['Followers Count', 'Statuses Count',
+                      'Friends Count', 'Favourites Count',
+                      'Verified', 'Tweet Source',
+                      'Lang', 'User Created At']
     df = pd.DataFrame(df).drop_duplicates('user_screen_name')
     fig = tools.make_subplots(rows=2, cols=4,
                               subplot_titles=subplot_titles)
@@ -315,6 +333,8 @@ def plot_user_analysis_chart(df):
         fig.append_trace(go.Histogram(x=df[col], nbinsx=30,name='Users'),
                          1, i)
     for i, col in enumerate(subplot_titles[4:7], start=5):
+        if (i == 6) and (search_type == 'Search Users'):
+            continue
         if col == 'Tweet Source':
             col = 'tweet_source'
         else:
@@ -349,15 +369,31 @@ def set_text_columns_ddown_options(df):
 
 @app.callback(Output('twitter_df', 'data'),
               [Input('search_button', 'n_clicks')],
-              [State('twitter_search', 'value'),
+              [State('search_type', 'value'),
+               State('twitter_search', 'value'),
                State('twitter_search_count', 'value'),
                State('twitter_search_lang', 'value')])
-def get_twitter_data_save_in_store(n_clicks, query, count, lang):
+def get_twitter_data_save_in_store(n_clicks, search_type, query, count, lang):
     if query is None:
         raise PreventUpdate
-    df = adv.twitter.search(q=query + ' -filter:retweets',
-                            count=count, lang=lang,
-                            tweet_mode='extended')
+    if search_type == 'Search Tweets':
+        df = adv.twitter.search(q=query + ' -filter:retweets',
+                                count=count, lang=lang,
+                                tweet_mode='extended')
+    elif search_type == 'Search Users':
+        resp_dfs = []
+        for i, num in enumerate(adv.twitter._get_counts(count, default=20),
+                                start=1):
+            df = adv.twitter.search_users(q=query, count=num, page=i,
+                                          include_entities=True)
+            resp_dfs.append(df)
+        df = pd.concat(resp_dfs)
+        df.columns = ['user_' + c for c in df.columns]
+    else:
+        df = adv.twitter.get_user_timeline(screen_name=query,
+                                           exclude_replies=False,
+                                           include_rts=True,
+                                           count=count,tweet_mode='extended')
     for exclude in exclude_columns:
         if exclude in df:
             del df[exclude]
@@ -457,7 +493,6 @@ def set_date_filter_params(df, col):
     if (col is None) or (df is None):
         raise PreventUpdate
     df = pd.DataFrame(df)
-    # if get_str_dtype(df, col) == 'datetime':
     if 'created' in col:
         start = df[col].min()
         end = df[col].max()
