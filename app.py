@@ -10,6 +10,7 @@ import dash_html_components as html
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
 from dash_table import DataTable
+from dash_table.FormatTemplate import Format
 from plotly import tools
 import pandas as pd
 import advertools as adv
@@ -155,19 +156,23 @@ app.layout = html.Div([
                 html.Br(),
                 html.H2(id='wtd_freq_chart_title',
                         style={'textAlign': 'center'}),
-                dcc.Graph(id='wtd_freq_chart',
-                          config={'displayModeBar': False},
-                          figure={'layout': go.Layout(plot_bgcolor='#eeeeee',
-                                                      paper_bgcolor='#eeeeee')
-                                  }),
+                dcc.Loading([
+                    dcc.Graph(id='wtd_freq_chart',
+                              config={'displayModeBar': False},
+                              figure={'layout': go.Layout(plot_bgcolor='#eeeeee',
+                                                          paper_bgcolor='#eeeeee')
+                                      }),
+                ]),
             ], label='Text Analysis', id='text_analysis_tab'),
             dbc.Tab([
                 html.H3(id='user_overview', style={'textAlign': 'center'}),
-                dcc.Graph(id='user_analysis_chart',
-                          config={'displayModeBar': False},
-                          figure={'layout': go.Layout(plot_bgcolor='#eeeeee',
-                                                      paper_bgcolor='#eeeeee')
-                                  })
+                dcc.Loading([
+                    dcc.Graph(id='user_analysis_chart',
+                              config={'displayModeBar': False},
+                              figure={'layout': go.Layout(plot_bgcolor='#eeeeee',
+                                                          paper_bgcolor='#eeeeee')
+                                      })
+                ]),
             ], tab_id='user_analysis_tab', label='User Analysis'),
             dbc.Tab([
                 html.Br(),
@@ -479,7 +484,9 @@ def set_categorical_filter_options(df, column):
 def set_table_columns(columns):
     if columns is None:
         raise PreventUpdate
-    return [{'id': c, 'name': c.replace('_', ' ').title()}
+    return [{'id': c, 'name': c.replace('_', ' ').title(),
+             'type': 'numeric' if 'ount' in c else 'text',
+             'format': Format(group=',') if 'ount' in c else None}
             for c in columns]
 
 
