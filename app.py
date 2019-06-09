@@ -96,7 +96,7 @@ app.layout = html.Div([
                         placeholder='Search Type',
                         options=[{'label': c, 'value': c}
                                  for c in ['Search Tweets',
-                                           'Search Users',
+                                           # 'Search Users',
                                            'Get User Timeline']])
         ], lg=2, xs=10),
         dbc.Col([
@@ -573,3 +573,4 @@ def download_df(data_df):
 
 if __name__ == '__main__':
     app.run_server()
+
