@@ -97,7 +97,7 @@ app.layout = html.Div([
                         placeholder='Search Type',
                         options=[{'label': c, 'value': c}
                                  for c in ['Search Tweets',
-                                           # 'Search Users',
+                                           'Search Users',
                                            'Get User Timeline']])
         ], lg=2, xs=10),
         dbc.Col([
@@ -116,7 +116,7 @@ app.layout = html.Div([
                          ),
         ], lg=2, xs=10),
         dbc.Col([
-            html.Button(id='search_button', children='Submit'),
+            dbc.Button(id='search_button', children='Submit', outline=True),
         ], lg=2, xs=10),
     ]),
     html.Hr(),
@@ -129,10 +129,6 @@ app.layout = html.Div([
                     dbc.Col([
                         dbc.Label('Text field:'),
                         dcc.Dropdown(id='text_columns',
-                                     options=[{'label': 'Tweet Text',
-                                               'value': 'tweet_full_text'},
-                                              {'label': 'User Description',
-                                               'value': 'user_description'}],
                                      placeholder='Text Column',
                                      value='tweet_full_text'),
                     ], lg=3, xs=9),
@@ -227,15 +223,17 @@ app.layout = html.Div([
         dbc.Col([
             dbc.Container(html.Label('Add/remove columns:')),
             dcc.Dropdown(id='output_table_col_select', multi=True,
-                         value=['tweet_created_at', 'user_screen_name',
-                                'user_followers_count', 'tweet_full_text',
-                                'tweet_retweet_count']),
+                         # value=['tweet_created_at', 'user_screen_name',
+                         #        'user_followers_count', 'tweet_full_text',
+                         #        'tweet_retweet_count']
+                         ),
         ], lg=2, xs=11, style={'margin-left': '1%'}),
         dbc.Col([
             html.Br(),
             dcc.Loading(
                 DataTable(id='table', sorting=True,
                           n_fixed_rows=1,
+                          filtering=False,
                           virtualization=True,
                           style_cell_conditional=[{
                               'if': {'row_index': 'odd'},
@@ -246,6 +244,32 @@ app.layout = html.Div([
                                'margin-left': '1%'}),
     ] + [html.Br() for x in range(30)]),
 ], style={'backgroundColor': '#eeeeee'})
+
+
+
+
+@app.callback([Output('text_columns', 'options'),
+               Output('text_columns', 'value'),
+               Output('output_table_col_select', 'value')],
+              [Input('search_button', 'n_clicks')],
+              [State('twitter_search', 'value'),
+               State('search_type', 'value')])
+def set_text_columns_dropdown_options(n_clicks, query, search_type):
+    search_tweet_cols = ['tweet_created_at', 'user_screen_name',
+                         'user_followers_count', 'tweet_full_text',
+                          'tweet_retweet_count']
+
+    if search_type == 'Search Users':
+        return ([{'label': 'User Description','value': 'user_description'}],
+                'user_description',
+                ['user_created_at', 'user_screen_name',
+                 'user_description', 'user_followers_count'])
+    return ([{'label': 'Tweet Text', 'value': 'tweet_full_text'},
+            {'label': 'User Description','value': 'user_description'}],
+            'tweet_full_text',
+            search_tweet_cols if search_type == 'Search Tweets' else
+            ['tweet_created_at', 'tweet_full_text',
+             'tweet_retweet_count', 'tweet_favourite_count'])
 
 
 @app.callback(Output('wtd_freq_chart_title', 'children'),
@@ -281,42 +305,38 @@ def plot_wtd_frequency(df, text_col, num_col, regex, search_type):
     if (df is None) or (text_col is None) or (num_col is None) or \
             (search_type is None):
         raise PreventUpdate
-    if search_type != 'Search Users':
-        df = pd.DataFrame(df)
-        wtd_freq_df = adv.word_frequency(df[text_col], df[num_col],
-                                         regex=regex_dict.get(regex),
-                                         phrase_len=phrase_len_dict.get(regex)
-                                         or 1)[:20]
-        fig = tools.make_subplots(rows=1, cols=2,
-                                  subplot_titles=['Weighted Frequency',
-                                                  'Absolute Frequency'])
-        fig.append_trace(go.Bar(x=wtd_freq_df['wtd_freq'][::-1],
-                                y=wtd_freq_df['word'][::-1],
-                                name='Weighted Freq.',
-                                orientation='h'), 1, 1)
-        wtd_freq_df = wtd_freq_df.sort_values('abs_freq', ascending=False)
-        fig.append_trace(go.Bar(x=wtd_freq_df ['abs_freq'][::-1],
-                                y=wtd_freq_df['word'][::-1],
-                                name='Abs. Freq.',
-                                orientation='h'), 1, 2)
+    df = pd.DataFrame(df)
+    wtd_freq_df = adv.word_frequency(df[text_col], df[num_col],
+                                     regex=regex_dict.get(regex),
+                                     phrase_len=phrase_len_dict.get(regex)
+                                     or 1)[:20]
+    fig = tools.make_subplots(rows=1, cols=2,
+                              subplot_titles=['Weighted Frequency',
+                                              'Absolute Frequency'])
+    fig.append_trace(go.Bar(x=wtd_freq_df['wtd_freq'][::-1],
+                            y=wtd_freq_df['word'][::-1],
+                            name='Weighted Freq.',
+                            orientation='h'), 1, 1)
+    wtd_freq_df = wtd_freq_df.sort_values('abs_freq', ascending=False)
+    fig.append_trace(go.Bar(x=wtd_freq_df ['abs_freq'][::-1],
+                            y=wtd_freq_df['word'][::-1],
+                            name='Abs. Freq.',
+                            orientation='h'), 1, 2)
 
-        fig['layout'].update(height=600,
-                             plot_bgcolor='#eeeeee',
-                             paper_bgcolor='#eeeeee',
-                             showlegend=False,
-                             yaxis={'title': 'Top Words: ' +
-                                    text_col.replace('_', ' ').title()})
-        fig['layout']['annotations'] += ({'x': 0.5, 'y': -0.16,
-                                          'xref': 'paper', 'showarrow': False,
-                                          'font': {'size': 16},
-                                          'yref': 'paper',
-                                          'text': num_col.replace('_', ' ').title()
-                                          },)
-        fig['layout']['xaxis']['domain'] = [0.1, 0.45]
-        fig['layout']['xaxis2']['domain'] = [0.65, 1.0]
-        return fig
-    fig = go.Figure()
-    fig['layout'].update(plot_bgcolor='#eeeeee', paper_bgcolor='#eeeeee')
+    fig['layout'].update(height=600,
+                         plot_bgcolor='#eeeeee',
+                         paper_bgcolor='#eeeeee',
+                         showlegend=False,
+                         yaxis={'title': 'Top Words: ' +
+                                text_col.replace('_', ' ').title()})
+    fig['layout']['annotations'] += ({'x': 0.5, 'y': -0.16,
+                                      'xref': 'paper', 'showarrow': False,
+                                      'font': {'size': 16},
+                                      'yref': 'paper',
+                                      'text': num_col.replace('_', ' ').title()
+                                      },)
+    fig['layout']['xaxis']['domain'] = [0.1, 0.45]
+    fig['layout']['xaxis2']['domain'] = [0.65, 1.0]
     return fig
 
 
@@ -580,4 +600,3 @@ def download_df(data_df):
 
 if __name__ == '__main__':
     app.run_server()
-
