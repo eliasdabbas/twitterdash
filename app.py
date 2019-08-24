@@ -11,7 +11,7 @@ import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
 from dash_table import DataTable
 from dash_table.FormatTemplate import Format
-from plotly import tools
+from plotly.subplots import make_subplots
 import pandas as pd
 import advertools as adv
 from dash.exceptions import PreventUpdate
@@ -77,19 +77,23 @@ app.layout = html.Div([
     html.Br(),
     dbc.Row([
         dbc.Col([
-            html.Img(src='data:image/png;base64,' + img_base64,
-                     width=200, style={'display': 'inline-block'}),
+            html.A([
+                html.Img(src='data:image/png;base64,' + img_base64,
+                         width=200, style={'display': 'inline-block'}),
+            ], href='https://github.com/eliasdabbas/advertools'),
             html.Br(),
-            html.A(children=['online marketing', html.Br(),
-                             'productivity & analysis'],
-                   style={'horizontal-align': 'center'},
-                   href='https://github.com/eliasdabbas/advertools'),
+            # html.A(children=['online marketing', html.Br(),
+            #                  'productivity & analysis'],
+            #        style={'horizontal-align': 'center'},
+            #        href='https://github.com/eliasdabbas/advertools'),
         ], lg=2, xs=11, style={'textAlign': 'center'}),
         dbc.Col([
+            html.Br(),
             html.H1('Twitter Search: Create & Analyze Your Own Dataset',
                     style={'textAlign': 'center'})
         ], lg=9, xs=11),
     ], style={'margin-left': '1%'}),
+    html.Br(),
     dbc.Row([
         dbc.Col(lg=2, xs=10),
         dbc.Col([
@@ -231,14 +235,16 @@ app.layout = html.Div([
         dbc.Col([
             html.Br(),
             dcc.Loading(
-                DataTable(id='table', sorting=True,
-                          n_fixed_rows=1,
-                          filtering=False,
+                DataTable(id='table', sort_action='native',
+                          # n_fixed_rows=1,
+                          # filtering=False,
                           virtualization=True,
-                          style_cell_conditional=[{
-                              'if': {'row_index': 'odd'},
-                              'backgroundColor': '#eeeeee'}],
-                          style_cell={'width': '200px'}),
+                          fixed_rows={'headers': True},
+                          # style_cell_conditional=[{
+                          #     'if': {'row_index': 'odd'},
+                          #     'backgroundColor': '#eeeeee'}],
+                          style_cell={'width': '200px',
+                                      'font-family': 'Source Sans Pro'}),
             ),
         ], lg=9, xs=11, style={'position': 'relative', 'zIndex': 1,
                                'margin-left': '1%'}),
@@ -310,9 +316,9 @@ def plot_wtd_frequency(df, text_col, num_col, regex, search_type):
                                      regex=regex_dict.get(regex),
                                      phrase_len=phrase_len_dict.get(regex)
                                      or 1)[:20]
-    fig = tools.make_subplots(rows=1, cols=2,
-                              subplot_titles=['Weighted Frequency',
-                                              'Absolute Frequency'])
+    fig = make_subplots(rows=1, cols=2,
+                        subplot_titles=['Weighted Frequency',
+                                        'Absolute Frequency'])
     fig.append_trace(go.Bar(x=wtd_freq_df['wtd_freq'][::-1],
                             y=wtd_freq_df['word'][::-1],
                             name='Weighted Freq.',
@@ -351,8 +357,8 @@ def plot_user_analysis_chart(df, search_type):
                       'Verified', 'Tweet Source',
                       'Lang', 'User Created At']
     df = pd.DataFrame(df).drop_duplicates('user_screen_name')
-    fig = tools.make_subplots(rows=2, cols=4,
-                              subplot_titles=subplot_titles)
+    fig = make_subplots(rows=2, cols=4,
+                        subplot_titles=subplot_titles)
     for i, col in enumerate(subplot_titles[:4], start=1):
         col = ('user_' + col).replace(' ', '_').lower()
         fig.append_trace(go.Histogram(x=df[col], nbinsx=30,name='Users'),
